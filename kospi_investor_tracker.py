@@ -142,7 +142,7 @@ def get_kospi_index_data():
 
 def get_kospi_investor_data_from_daum_direct():
     import time
-    url = "https://finance.daum.net/api/investor/days?symbolCode=U001&page=1&perPage=120"
+    url = "https://finance.daum.net/api/investor/days?symbolCode=U001&page=1&perPage=30"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "Referer": "https://finance.daum.net/domestic/investors",
