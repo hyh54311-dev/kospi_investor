@@ -145,9 +145,18 @@ def get_kospi_investor_data_from_daum_direct():
     url = "https://finance.daum.net/api/investor/days?symbolCode=U001&page=1&perPage=120"
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        "Referer": "https://finance.daum.net/domestic/investors"
+        "Referer": "https://finance.daum.net/domestic/investors",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7"
     }
-    res = requests.get(url, headers=headers, verify=False, timeout=15)
+    session = requests.Session()
+    try:
+        # Dummy call to domestic/investors page to receive session cookies
+        session.get("https://finance.daum.net/domestic/investors", headers=headers, verify=False, timeout=10)
+    except Exception:
+        pass
+    
+    res = session.get(url, headers=headers, verify=False, timeout=15)
     res.raise_for_status()
     json_data = res.json()
     
@@ -316,12 +325,19 @@ def get_kospi_investor_data():
         df = df.sort_values(by="date", ascending=False).reset_index(drop=True)
         return df
     else:
+        daum_err = None
         try:
             print("Direct Mode: Fetching data from Daum API...")
             return get_kospi_investor_data_from_daum_direct()
         except Exception as de:
+            daum_err = de
             print(f"Direct Mode: Daum API failed ({de}). Falling back to Naver scraping...")
+        
+        try:
             return get_kospi_investor_data_from_naver_direct()
+        except Exception as ne:
+            print(f"Direct Mode: Naver scraping failed ({ne}).")
+            raise ValueError(f"수급 데이터 수집 모두 실패 (Daum: {daum_err} / Naver: {ne})")
 
 def analyze_cumulative_trend(df, num_days):
     df_sub = df.head(num_days)
