@@ -141,8 +141,8 @@ def get_kospi_index_data():
     return data_rows
 
 def get_kospi_investor_data_from_kis():
-    kis_key = os.getenv("KIS_APP_KEY", "")
-    kis_secret = os.getenv("KIS_APP_SECRET", "")
+    kis_key = os.getenv("KIS_APP_KEY", "").strip()
+    kis_secret = os.getenv("KIS_APP_SECRET", "").strip()
     if not kis_key or not kis_secret:
         raise ValueError("KIS API 키가 환경 변수에 설정되어 있지 않습니다.")
         
@@ -164,10 +164,11 @@ def get_kospi_investor_data_from_kis():
     start_ymd = start.strftime("%Y%m%d")
     
     print("KIS OpenAPI: Fetching investor daily market trend...")
-    query_str = f"?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_ISCD_1=&FID_INPUT_DATE_1={start_ymd}&FID_INPUT_DATE_2={today_ymd}&FID_PERIOD_DIV_CODE=D"
+    query_str = f"?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_ISCD_1=&FID_INPUT_ISCD_2=&FID_INPUT_DATE_1={start_ymd}&FID_INPUT_DATE_2={today_ymd}&FID_PERIOD_DIV_CODE=D"
     url = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market" + query_str
     
     headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "authorization": f"Bearer {token}",
         "appkey": kis_key,
         "appsecret": kis_secret,
