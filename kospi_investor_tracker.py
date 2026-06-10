@@ -140,6 +140,88 @@ def get_kospi_index_data():
         
     return data_rows
 
+def get_kospi_investor_data_from_kis():
+    kis_key = os.getenv("KIS_APP_KEY", "")
+    kis_secret = os.getenv("KIS_APP_SECRET", "")
+    if not kis_key or not kis_secret:
+        raise ValueError("KIS API 키가 환경 변수에 설정되어 있지 않습니다.")
+        
+    print("KIS OpenAPI: Fetching access token...")
+    auth_url = "https://openapi.koreainvestment.com:9443/oauth2/tokenP"
+    auth_headers = {"content-type": "application/json"}
+    auth_body = {
+        "grant_type": "client_credentials",
+        "appkey": kis_key,
+        "appsecret": kis_secret
+    }
+    auth_res = requests.post(auth_url, headers=auth_headers, json=auth_body, verify=False, timeout=10)
+    auth_res.raise_for_status()
+    token = auth_res.json()["access_token"]
+    
+    today = datetime.now()
+    start = today - datetime.timedelta(days=220)
+    today_ymd = today.strftime("%Y%m%d")
+    start_ymd = start.strftime("%Y%m%d")
+    
+    print("KIS OpenAPI: Fetching investor daily market trend...")
+    url = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market"
+    params = {
+        "FID_COND_MRKT_DIV_CODE": "U",
+        "FID_INPUT_ISCD": "0001",
+        "FID_INPUT_ISCD_1": "",
+        "FID_INPUT_DATE_1": start_ymd,
+        "FID_INPUT_DATE_2": today_ymd,
+        "FID_PERIOD_DIV_CODE": "D"
+    }
+    headers = {
+        "authorization": f"Bearer {token}",
+        "appkey": kis_key,
+        "appsecret": kis_secret,
+        "tr_id": "FHPTJ04040000",
+        "custtype": "P"
+    }
+    
+    res = requests.get(url, headers=headers, params=params, verify=False, timeout=15)
+    res.raise_for_status()
+    json_data = res.json()
+    
+    if json_data.get("rt_cd") != "0":
+        raise ValueError(f"KIS API 리턴 오류: {json_data.get('msg1')}")
+        
+    output = json_data.get("output", [])
+    raw_rows = []
+    for row in output:
+        date_raw = row.get("stck_bsop_date", "")
+        if not date_raw or len(date_raw) != 8:
+            continue
+        formatted_date = f"{date_raw[0:4]}.{date_raw[4:6]}.{date_raw[6:8]}"
+        
+        def parse_kis_amt(val):
+            try:
+                return float(val) / 100.0
+            except (ValueError, TypeError):
+                return 0.0
+                
+        raw_rows.append({
+            "date": formatted_date,
+            "individual": parse_kis_amt(row.get("prsn_ntby_amt", 0)),
+            "foreigner": parse_kis_amt(row.get("frgn_ntby_amt", 0)),
+            "institution": parse_kis_amt(row.get("orgn_ntby_amt", 0)),
+            "fin_inv": parse_kis_amt(row.get("finc_gorg_ntby_amt", 0)),
+            "insurance": parse_kis_amt(row.get("insu_ntby_amt", 0)),
+            "inv_trust": parse_kis_amt(row.get("trst_ntby_amt", 0)),
+            "bank": parse_kis_amt(row.get("bank_ntby_amt", 0)),
+            "pension": parse_kis_amt(row.get("peco_ntby_amt", 0)),
+            "other_corp": parse_kis_amt(row.get("etc_corp_ntby_amt", 0)),
+            "other_fin": parse_kis_amt(row.get("etc_frgn_ntby_amt", 0))
+        })
+        
+    if not raw_rows:
+        raise ValueError("KIS API 응답 데이터 파싱 실패")
+        
+    df = pd.DataFrame(raw_rows)
+    return df
+
 def get_kospi_investor_data_from_daum_direct():
     import time
     url = "https://finance.daum.net/api/investor/days?symbolCode=U001&page=1&perPage=30"
@@ -325,6 +407,18 @@ def get_kospi_investor_data():
         df = df.sort_values(by="date", ascending=False).reset_index(drop=True)
         return df
     else:
+        kis_key = os.getenv("KIS_APP_KEY", "")
+        kis_secret = os.getenv("KIS_APP_SECRET", "")
+        kis_err = None
+        
+        if kis_key and kis_secret:
+            try:
+                print("Direct Mode: Fetching data from KIS OpenAPI...")
+                return get_kospi_investor_data_from_kis()
+            except Exception as ke:
+                kis_err = ke
+                print(f"Direct Mode: KIS OpenAPI failed ({ke}). Falling back to Daum...")
+                
         daum_err = None
         try:
             print("Direct Mode: Fetching data from Daum API...")
@@ -337,7 +431,7 @@ def get_kospi_investor_data():
             return get_kospi_investor_data_from_naver_direct()
         except Exception as ne:
             print(f"Direct Mode: Naver scraping failed ({ne}).")
-            raise ValueError(f"수급 데이터 수집 모두 실패 (Daum: {daum_err} / Naver: {ne})")
+            raise ValueError(f"수급 데이터 수집 모두 실패 (KIS: {kis_err} / Daum: {daum_err} / Naver: {ne})")
 
 def analyze_cumulative_trend(df, num_days):
     df_sub = df.head(num_days)
