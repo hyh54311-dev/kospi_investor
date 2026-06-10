@@ -165,7 +165,7 @@ def get_kospi_investor_data_from_daum_direct():
         items = json_data.get("output", json_data)
         
     if not isinstance(items, list) or len(items) == 0:
-        raise ValueError("다음 금융 수급 데이터가 올바르지 않습니다.")
+        raise ValueError(f"다음 금융 데이터 구조 비정상. 응답: {str(json_data)[:150]}")
         
     raw_rows = []
     for item in items:
