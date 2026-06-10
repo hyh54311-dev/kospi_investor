@@ -175,9 +175,18 @@ def get_kospi_investor_data_from_kis():
         "custtype": "P"
     }
     
-    res = requests.get(url, headers=headers, verify=False, timeout=15)
-    res.raise_for_status()
-    json_data = res.json()
+    import urllib.request
+    import json
+    import ssl
+    
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    context = ssl._create_unverified_context()
+    try:
+        with urllib.request.urlopen(req, context=context, timeout=15) as response:
+            res_body = response.read().decode("utf-8")
+            json_data = json.loads(res_body)
+    except Exception as ue:
+        raise ValueError(f"urllib 호출 실패: {ue}")
     
     if json_data.get("rt_cd") != "0":
         raise ValueError(f"KIS API 리턴 오류: {json_data.get('msg1')}")
