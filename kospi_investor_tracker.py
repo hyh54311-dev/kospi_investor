@@ -9,7 +9,7 @@ import re
 import requests
 import urllib3
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 import html
@@ -159,7 +159,7 @@ def get_kospi_investor_data_from_kis():
     token = auth_res.json()["access_token"]
     
     today = datetime.now()
-    start = today - datetime.timedelta(days=220)
+    start = today - timedelta(days=220)
     today_ymd = today.strftime("%Y%m%d")
     start_ymd = start.strftime("%Y%m%d")
     
