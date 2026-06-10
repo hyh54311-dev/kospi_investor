@@ -164,15 +164,9 @@ def get_kospi_investor_data_from_kis():
     start_ymd = start.strftime("%Y%m%d")
     
     print("KIS OpenAPI: Fetching investor daily market trend...")
-    url = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market"
-    params = {
-        "FID_COND_MRKT_DIV_CODE": "U",
-        "FID_INPUT_ISCD": "0001",
-        "FID_INPUT_ISCD_1": "",
-        "FID_INPUT_DATE_1": start_ymd,
-        "FID_INPUT_DATE_2": today_ymd,
-        "FID_PERIOD_DIV_CODE": "D"
-    }
+    query_str = f"?FID_COND_MRKT_DIV_CODE=U&FID_INPUT_ISCD=0001&FID_INPUT_ISCD_1=&FID_INPUT_DATE_1={start_ymd}&FID_INPUT_DATE_2={today_ymd}&FID_PERIOD_DIV_CODE=D"
+    url = "https://openapi.koreainvestment.com:9443/uapi/domestic-stock/v1/quotations/inquire-investor-daily-by-market" + query_str
+    
     headers = {
         "authorization": f"Bearer {token}",
         "appkey": kis_key,
@@ -181,7 +175,7 @@ def get_kospi_investor_data_from_kis():
         "custtype": "P"
     }
     
-    res = requests.get(url, headers=headers, params=params, verify=False, timeout=15)
+    res = requests.get(url, headers=headers, verify=False, timeout=15)
     res.raise_for_status()
     json_data = res.json()
     
